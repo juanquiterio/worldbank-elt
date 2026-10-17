@@ -1,0 +1,6 @@
+.env
+secrets/
+*.db
+*.duckdb
+.venv/
+__pycache__/

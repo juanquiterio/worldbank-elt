@@ -1,0 +1,7 @@
+worldbank_elt:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../data/worldbank.duckdb
+      threads: 1

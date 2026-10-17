@@ -1,0 +1,128 @@
+[
+  {
+    "run_started_at": "2026-10-16T01:33:25.801971+00:00",
+    "duration_seconds": 49.11,
+    "status": "success",
+    "rows_exported": 5642,
+    "stages": [
+      {
+        "stage": "extract_indicators",
+        "status": "success",
+        "duration_seconds": 18.21
+      },
+      {
+        "stage": "extract_countries",
+        "status": "success",
+        "duration_seconds": 1.1
+      },
+      {
+        "stage": "dbt_run",
+        "status": "success",
+        "duration_seconds": 14.81
+      },
+      {
+        "stage": "dbt_test",
+        "status": "success",
+        "duration_seconds": 14.77
+      }
+    ]
+  },
+  {
+    "run_started_at": "2026-10-16T01:34:45.221141+00:00",
+    "duration_seconds": 38.14,
+    "status": "success",
+    "rows_exported": 5642,
+    "stages": [
+      {
+        "stage": "extract_indicators",
+        "status": "success",
+        "duration_seconds": 15.97
+      },
+      {
+        "stage": "extract_countries",
+        "status": "success",
+        "duration_seconds": 2.38
+      },
+      {
+        "stage": "dbt_run",
+        "status": "success",
+        "duration_seconds": 11.63
+      },
+      {
+        "stage": "dbt_test",
+        "status": "success",
+        "duration_seconds": 8.0
+      }
+    ]
+  },
+  {
+    "run_started_at": "2026-10-16T01:36:30.098552+00:00",
+    "duration_seconds": 44.57,
+    "status": "success",
+    "rows_exported": 5642,
+    "stages": [
+      {
+        "stage": "extract_indicators",
+        "status": "success",
+        "duration_seconds": 15.47
+      },
+      {
+        "stage": "extract_countries",
+        "status": "success",
+        "duration_seconds": 1.31
+      },
+      {
+        "stage": "dbt_run",
+        "status": "success",
+        "duration_seconds": 16.41
+      },
+      {
+        "stage": "dbt_test",
+        "status": "success",
+        "duration_seconds": 11.12
+      }
+    ]
+  },
+  {
+    "run_started_at": "2026-10-16T03:15:38.490359+00:00",
+    "duration_seconds": 68.54,
+    "status": "success",
+    "rows_exported": 5642,
+    "metrics": {
+      "rows": 5642,
+      "countries": 217,
+      "year_min": 2000,
+      "year_max": 2025,
+      "null_pct_by_indicator": {
+        "gdp_current_usd": 3.79,
+        "gdp_per_capita_current_usd": 3.79,
+        "inflation_cpi_pct": 16.75,
+        "population_total": 0.0,
+        "unemployment_pct": 14.07,
+        "life_expectancy_years": 3.85
+      }
+    },
+    "stages": [
+      {
+        "stage": "extract_indicators",
+        "status": "success",
+        "duration_seconds": 16.72
+      },
+      {
+        "stage": "extract_countries",
+        "status": "success",
+        "duration_seconds": 0.78
+      },
+      {
+        "stage": "dbt_run",
+        "status": "success",
+        "duration_seconds": 32.74
+      },
+      {
+        "stage": "dbt_test",
+        "status": "success",
+        "duration_seconds": 17.88
+      }
+    ]
+  }
+]

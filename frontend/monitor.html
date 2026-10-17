@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pipeline Health Monitor</title>
+  <style>
+:root {
+  --bg: #0b0d10;
+  --panel: #12161c;
+  --panel-border: #1f2530;
+  --panel-border-soft: #1a1f28;
+  --text: #e7ebee;
+  --muted: #838d99;
+  --muted-dim: #596270;
+
+  --accent: #37c98f;
+  --good: #37c98f;
+  --medium: #e0a940;
+  --high: #ec8a4a;
+  --poor: #e2574f;
+  --low: #7f94ad;
+
+  --radius: 10px;
+  --radius-sm: 7px;
+
+  --font-body: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.shell { max-width: 780px; margin: 0 auto; padding: 40px 20px 72px; }
+
+.page-title { font-size: 22px; font-weight: 650; margin: 0 0 4px; }
+.page-sub { font-size: 13px; color: var(--muted); margin: 0 0 26px; line-height: 1.5; }
+
+.hidden { display: none !important; }
+
+/* ---------- Startup ---------- */
+
+.startup {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 36px 24px;
+  text-align: center;
+}
+
+.spinner {
+  width: 22px; height: 22px;
+  margin: 0 auto 16px;
+  border: 2px solid var(--panel-border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.startup__title { font-size: 14px; font-weight: 600; margin: 0 0 6px; }
+.startup__msg { font-size: 12.5px; color: var(--muted); margin: 0; line-height: 1.55; }
+
+.btn {
+  margin-top: 16px;
+  background: var(--accent);
+  color: #06130d;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 18px;
+  cursor: pointer;
+}
+
+/* ---------- Shared ---------- */
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.section { margin-top: 22px; }
+
+.section-title { font-size: 13px; font-weight: 650; color: var(--muted); margin: 0 0 10px; }
+
+.empty, .err { padding: 24px 0; text-align: center; font-size: 13px; color: var(--muted-dim); }
+.err { color: var(--poor); }
+
+.link-btn {
+  background: none; border: none; color: var(--muted);
+  font-size: 12.5px; padding: 0; cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--panel-border); text-underline-offset: 3px;
+}
+.link-btn:hover { color: var(--text); }
+
+.c-good { color: var(--good); }
+.c-medium { color: var(--medium); }
+.c-high { color: var(--high); }
+.c-poor { color: var(--poor); }
+.c-low { color: var(--low); }
+
+/* ---------- Hero ---------- */
+
+.hero { display: flex; align-items: center; gap: 24px; }
+
+.donut { flex-shrink: 0; width: 104px; height: 104px; position: relative; }
+.donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.donut__center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.donut__pct { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.donut__cap { font-size: 10px; color: var(--muted-dim); margin-top: 1px; }
+
+.hero__body { min-width: 0; flex: 1; }
+.hero__status { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 6px; }
+.hero__summary { font-size: 13.5px; color: var(--muted); line-height: 1.55; margin: 0 0 10px; }
+
+.hero__foot {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 11.5px; color: var(--muted-dim);
+}
+
+.refresh-btn {
+  background: none; border: 1px solid var(--panel-border); color: var(--muted);
+  font-size: 11.5px; padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer;
+}
+.refresh-btn:hover { color: var(--text); border-color: var(--muted); }
+.refresh-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ---------- Alerts ---------- */
+
+.alert {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-left-width: 3px;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+
+.alert__top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+
+.sev {
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 2px 8px; border-radius: 100px; flex-shrink: 0;
+}
+
+.sev-critical { color: var(--poor); background: rgba(226, 87, 79, 0.13); }
+.sev-high { color: var(--high); background: rgba(236, 138, 74, 0.13); }
+.sev-medium { color: var(--medium); background: rgba(224, 169, 64, 0.13); }
+.sev-low { color: var(--low); background: rgba(127, 148, 173, 0.15); }
+
+.alert--critical { border-left-color: var(--poor); }
+.alert--high { border-left-color: var(--high); }
+.alert--medium { border-left-color: var(--medium); }
+.alert--low { border-left-color: var(--low); }
+
+.alert__check { font-size: 11.5px; color: var(--muted-dim); }
+.alert__msg { font-size: 13.5px; line-height: 1.5; }
+.alert__details { margin-top: 6px; font-size: 11.5px; color: var(--muted-dim); font-family: var(--font-mono); }
+
+/* ---------- Stat tiles ---------- */
+
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+.tile {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  min-width: 0;
+}
+
+.tile__label { font-size: 11.5px; color: var(--muted-dim); }
+.tile__value { font-size: 16px; font-weight: 650; margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+/* ---------- Runs strip ---------- */
+
+.strip {
+  display: flex; align-items: flex-end; gap: 3px;
+  height: 84px;
+  padding-bottom: 2px;
+}
+
+.bar {
+  flex: 1; min-width: 5px; max-width: 22px;
+  border: none; padding: 0;
+  border-radius: 3px 3px 1px 1px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.12s ease;
+}
+
+.bar:hover { opacity: 0.85; }
+.bar.is-selected { opacity: 1; outline: 1.5px solid var(--text); outline-offset: 1px; }
+.bar-success { background: var(--good); }
+.bar-failed { background: var(--poor); }
+
+.strip-axis { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted-dim); margin-top: 8px; }
+
+.run-detail { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--panel-border-soft); }
+
+.run-detail__head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.run-detail__when { font-size: 13.5px; font-weight: 600; }
+.run-detail__meta { font-size: 12px; color: var(--muted-dim); }
+
+.stage {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 7px 0; font-size: 12.5px;
+  border-bottom: 1px solid var(--panel-border-soft);
+}
+
+.stage:last-child { border-bottom: none; }
+.stage__dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; position: relative; top: -1px; }
+.stage__name { flex: 1; text-transform: capitalize; }
+.stage__dur { color: var(--muted-dim); font-variant-numeric: tabular-nums; }
+
+.errtail {
+  margin: 6px 0 4px;
+  background: #0d1015;
+  border: 1px solid rgba(226, 87, 79, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #f0a8a3;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 180px;
+  overflow: auto;
+}
+
+/* ---------- Trends ---------- */
+
+.trend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 18px; }
+
+.trend-card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px 8px;
+}
+
+.trend-card__label { font-size: 11.5px; color: var(--muted-dim); }
+.trend-card__value { font-size: 16px; font-weight: 650; margin: 2px 0 4px; font-variant-numeric: tabular-nums; }
+.trend-card svg { width: 100%; height: 48px; display: block; }
+
+.nulls { background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius-sm); padding: 6px 14px; }
+
+.null-row {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 9px 0; font-size: 12.5px;
+  border-bottom: 1px solid var(--panel-border-soft);
+}
+
+.null-row:last-child { border-bottom: none; }
+.null-row__name { flex: 1; text-transform: capitalize; }
+.null-row__val { font-variant-numeric: tabular-nums; font-weight: 600; }
+.null-row__delta { min-width: 78px; text-align: right; font-size: 11.5px; color: var(--muted-dim); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 600px) {
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+  .hero { flex-direction: column; align-items: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <h1 class="page-title">Pipeline Health Monitor</h1>
+    <p class="page-sub">Operational view of the World Bank ELT pipeline: runs, data freshness and quality signals.</p>
+
+    <!-- Cold start / loading state -->
+    <section class="startup" id="startup">
+      <div class="spinner" id="startup-spinner"></div>
+      <p class="startup__title" id="startup-title">Starting the demo server…</p>
+      <p class="startup__msg" id="startup-msg">The demo runs on a free server that sleeps when idle. This can take 30–60 seconds the first time.</p>
+      <button class="btn hidden" id="startup-retry" type="button">Try again</button>
+    </section>
+
+    <!-- App -->
+    <section id="app" class="hidden">
+      <div class="card hero" id="hero"></div>
+
+      <div class="section hidden" id="alerts-section">
+        <h2 class="section-title" id="alerts-title">Active alerts</h2>
+        <div id="alerts"></div>
+      </div>
+
+      <div class="section">
+        <div class="tiles" id="tiles"></div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">Recent runs</h2>
+        <div class="card" id="runs-card"></div>
+      </div>
+
+      <div class="section">
+        <button type="button" class="link-btn" id="trends-toggle">Show data trends</button>
+        <div class="hidden" id="trends" style="margin-top:14px"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+// Point this to your API. On Render this is your Web Service URL.
+const API_BASE = "http://localhost:8005";
+
+const HEALTH_POLL_MS = 3000;
+const HEALTH_TIMEOUT_MS = 120000;
+const SLOW_NOTICE_MS = 25000;
+const REQUEST_TIMEOUT_MS = 10000;
+const AUTO_REFRESH_MS = 60000;
+const NULL_SPIKE_POINTS = 5; // mirrors the backend's null-spike threshold
+
+const $ = (id) => document.getElementById(id);
+
+const state = {
+  status: null,
+  runs: [],          // newest first, as the API returns them
+  selectedIdx: 0,    // index into the oldest-first strip
+  trend: null,
+  lastFetch: null,
+  refreshing: false,
+};
+
+// ---------- Helpers ----------
+
+function esc(v) {
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function api(path, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function ago(iso) {
+  if (!iso) return "never";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "—";
+  const s = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.round(s / 60)}m ago`;
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+  return `${Math.round(s / 86400)}d ago`;
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? String(iso ?? "") : d.toLocaleString();
+}
+
+function fmtDuration(s) {
+  if (s === null || s === undefined) return "—";
+  const n = Number(s);
+  if (n < 60) return `${n.toFixed(n < 10 ? 1 : 0)}s`;
+  return `${Math.floor(n / 60)}m ${Math.round(n % 60)}s`;
+}
+
+const num = new Intl.NumberFormat("en-US");
+const humanize = (s) => String(s).replace(/_/g, " ");
+
+const STATUS_CLASS = { healthy: "good", degraded: "medium", critical: "poor" };
+const STATUS_LABEL = { healthy: "Healthy", degraded: "Degraded", critical: "Critical" };
+
+// ---------- Cold start: wait for the backend instead of redirecting blindly ----------
+
+async function boot() {
+  $("startup").classList.remove("hidden");
+  $("app").classList.add("hidden");
+  $("startup-spinner").classList.remove("hidden");
+  $("startup-retry").classList.add("hidden");
+  $("startup-title").textContent = "Starting the demo server…";
+  $("startup-msg").textContent =
+    "The demo runs on a free server that sleeps when idle. This can take 30–60 seconds the first time.";
+
+  const started = Date.now();
+  let ready = false;
+
+  while (Date.now() - started < HEALTH_TIMEOUT_MS) {
+    try {
+      await api("/health", 8000);
+      ready = true;
+      break;
+    } catch (err) {
+      // sleeping, starting, or data not loaded yet: keep waiting
+    }
+    if (Date.now() - started > SLOW_NOTICE_MS) {
+      $("startup-title").textContent = "Still starting…";
+      $("startup-msg").textContent = "Almost there. The server is waking up and loading the data. You can keep this tab open.";
+    }
+    await new Promise((r) => setTimeout(r, HEALTH_POLL_MS));
+  }
+
+  if (!ready) return showStartupFailure("The demo server didn't respond", "It may be down or still waking up. Give it a moment and try again.");
+
+  try {
+    await refresh(true);
+  } catch (err) {
+    return showStartupFailure("Couldn't load the monitor", "The server is up but the request failed. Please try again.");
+  }
+
+  $("startup").classList.add("hidden");
+  $("app").classList.remove("hidden");
+}
+
+function showStartupFailure(title, msg) {
+  $("startup-spinner").classList.add("hidden");
+  $("startup-title").textContent = title;
+  $("startup-msg").textContent = msg;
+  $("startup-retry").classList.remove("hidden");
+}
+
+$("startup-retry").addEventListener("click", boot);
+
+// ---------- Data ----------
+
+async function refresh(isFirst = false) {
+  if (state.refreshing) return;
+  state.refreshing = true;
+  const btn = document.getElementById("refresh-btn");
+  if (btn) btn.disabled = true;
+
+  try {
+    const [status, runs] = await Promise.all([api("/monitor/status"), api("/pipeline/runs?limit=50")]);
+    state.status = status;
+    state.runs = runs;
+    state.lastFetch = Date.now();
+    state.trend = null; // reload lazily next time it's opened
+    if (isFirst || state.selectedIdx >= runs.length) state.selectedIdx = Math.max(0, runs.length - 1);
+    render();
+    if (!$("trends").classList.contains("hidden")) loadTrends();
+  } finally {
+    state.refreshing = false;
+    const b = document.getElementById("refresh-btn");
+    if (b) b.disabled = false;
+  }
+}
+
+setInterval(() => {
+  if (!document.hidden && !$("app").classList.contains("hidden")) refresh().catch(() => {});
+}, AUTO_REFRESH_MS);
+
+setInterval(() => {
+  const el = document.getElementById("checked-label");
+  if (el && state.lastFetch) el.textContent = `Checked ${ago(new Date(state.lastFetch).toISOString())}`;
+}, 5000);
+
+// ---------- Rendering ----------
+
+function render() {
+  renderHero();
+  renderAlerts();
+  renderTiles();
+  renderRuns();
+}
+
+function rateColor(pct) {
+  if (pct === null || pct === undefined) return "var(--muted-dim)";
+  if (pct >= 90) return "var(--good)";
+  if (pct >= 70) return "var(--medium)";
+  return "var(--poor)";
+}
+
+function renderHero() {
+  const s = state.status;
+  const cls = STATUS_CLASS[s.status] || "medium";
+  const pct = s.success_rate_pct;
+
+  const r = 44, c = 2 * Math.PI * r;
+  const dash = pct === null || pct === undefined ? 0 : (pct / 100) * c;
+
+  const total = Object.values(s.alert_counts || {}).reduce((a, b) => a + b, 0);
+  let summary;
+  if (s.status === "healthy") {
+    summary = `All checks passed. Last successful run ${ago(s.last_success_at)}.`;
+  } else if (s.status === "critical") {
+    summary = `${total} active alert${total === 1 ? "" : "s"}, including critical ones. Last successful run ${ago(s.last_success_at)}.`;
+  } else {
+    summary = `${total} alert${total === 1 ? "" : "s"} need${total === 1 ? "s" : ""} attention. Last successful run ${ago(s.last_success_at)}.`;
+  }
+
+  $("hero").innerHTML = `
+    <div class="donut" aria-label="Success rate">
+      <svg viewBox="0 0 104 104">
+        <circle cx="52" cy="52" r="${r}" fill="none" stroke="var(--panel-border)" stroke-width="8" />
+        <circle cx="52" cy="52" r="${r}" fill="none" stroke="${rateColor(pct)}" stroke-width="8"
+                stroke-linecap="round" stroke-dasharray="${dash} ${c}" />
+      </svg>
+      <div class="donut__center">
+        <span class="donut__pct">${pct === null || pct === undefined ? "—" : Math.round(pct) + "%"}</span>
+        <span class="donut__cap">success</span>
+      </div>
+    </div>
+    <div class="hero__body">
+      <h2 class="hero__status c-${cls}">${esc(STATUS_LABEL[s.status] || s.status)}</h2>
+      <p class="hero__summary">${esc(summary)}</p>
+      <div class="hero__foot">
+        <span id="checked-label">Checked just now</span>
+        <button type="button" class="refresh-btn" id="refresh-btn">Refresh</button>
+      </div>
+    </div>`;
+
+  $("refresh-btn").addEventListener("click", () => refresh().catch(() => {}));
+}
+
+function renderAlerts() {
+  const alerts = state.status.alerts || [];
+  const section = $("alerts-section");
+  // Strategic silence: when nothing is wrong, this section doesn't exist.
+  section.classList.toggle("hidden", alerts.length === 0);
+  if (!alerts.length) return;
+
+  $("alerts-title").textContent = `Active alerts (${alerts.length})`;
+  $("alerts").innerHTML = alerts.map((a) => {
+    const details = Object.entries(a.details || {})
+      .filter(([, v]) => v !== null && typeof v !== "object")
+      .slice(0, 4)
+      .map(([k, v]) => `${esc(humanize(k))}: ${esc(v)}`)
+      .join("  ·  ");
+    return `
+      <div class="alert alert--${esc(a.severity)}">
+        <div class="alert__top">
+          <span class="sev sev-${esc(a.severity)}">${esc(a.severity)}</span>
+          <span class="alert__check">${esc(humanize(a.check))}</span>
+        </div>
+        <div class="alert__msg">${esc(a.message)}</div>
+        ${details ? `<div class="alert__details">${details}</div>` : ""}
+      </div>`;
+  }).join("");
+}
+
+function renderTiles() {
+  const s = state.status;
+  const tiles = [
+    ["Last run", ago(s.last_run_at)],
+    ["Last success", ago(s.last_success_at)],
+    ["Avg duration", fmtDuration(s.avg_duration_seconds)],
+    ["Total runs", s.runs_total != null ? num.format(s.runs_total) : "—"],
+  ];
+  $("tiles").innerHTML = tiles.map(([label, value]) => `
+    <div class="tile"><div class="tile__label">${esc(label)}</div><div class="tile__value">${esc(value)}</div></div>`).join("");
+}
+
+function renderRuns() {
+  const box = $("runs-card");
+  const runs = [...state.runs].reverse(); // oldest first for the strip
+  if (!runs.length) {
+    box.innerHTML = `<div class="empty">No pipeline runs recorded yet.</div>`;
+    return;
+  }
+
+  const maxDur = Math.max(...runs.map((r) => Number(r.duration_seconds) || 0), 1);
+  const bars = runs.map((r, i) => {
+    const h = Math.max(14, ((Number(r.duration_seconds) || 0) / maxDur) * 100);
+    const sel = i === state.selectedIdx ? " is-selected" : "";
+    return `<button type="button" class="bar bar-${r.status === "success" ? "success" : "failed"}${sel}"
+              data-i="${i}" style="height:${h}%"
+              title="${esc(fmtDate(r.run_started_at))} · ${esc(r.status)} · ${esc(fmtDuration(r.duration_seconds))}"></button>`;
+  }).join("");
+
+  box.innerHTML = `
+    <div class="strip">${bars}</div>
+    <div class="strip-axis"><span>${esc(ago(runs[0].run_started_at))}</span><span>${runs.length} runs · bar height is duration</span><span>latest</span></div>
+    <div class="run-detail" id="run-detail"></div>`;
+
+  box.querySelectorAll(".bar").forEach((b) => {
+    b.addEventListener("click", () => {
+      state.selectedIdx = Number(b.dataset.i);
+      box.querySelectorAll(".bar").forEach((x) => x.classList.toggle("is-selected", x === b));
+      renderRunDetail();
+    });
+  });
+  renderRunDetail();
+}
+
+function renderRunDetail() {
+  const runs = [...state.runs].reverse();
+  const run = runs[state.selectedIdx];
+  const box = $("run-detail");
+  if (!run) { box.innerHTML = ""; return; }
+
+  const cls = run.status === "success" ? "good" : "poor";
+  const meta = [];
+  if (run.rows_exported != null) meta.push(`${num.format(run.rows_exported)} rows`);
+  if (run.metrics) {
+    meta.push(`${run.metrics.countries} countries`);
+    if (run.metrics.year_min != null) meta.push(`${run.metrics.year_min}–${run.metrics.year_max}`);
+  }
+
+  const stages = (run.stages || []).map((st) => {
+    const sc = st.status === "success" ? "good" : "poor";
+    return `
+      <div class="stage">
+        <span class="stage__dot" style="background:var(--${sc})"></span>
+        <span class="stage__name">${esc(humanize(st.stage))}</span>
+        <span class="stage__dur">${esc(fmtDuration(st.duration_seconds))}</span>
+      </div>
+      ${st.error_tail ? `<pre class="errtail">${esc(st.error_tail)}</pre>` : ""}`;
+  }).join("");
+
+  box.innerHTML = `
+    <div class="run-detail__head">
+      <span class="run-detail__when">${esc(fmtDate(run.run_started_at))} <span class="c-${cls}" style="margin-left:8px">${esc(run.status)}</span></span>
+      <span class="run-detail__meta">${esc(fmtDuration(run.duration_seconds))}${meta.length ? " · " + esc(meta.join(" · ")) : ""}</span>
+    </div>
+    ${stages || `<div class="empty" style="padding:8px 0">No stage details for this run.</div>`}`;
+}
+
+// ---------- Trends (loaded only when asked) ----------
+
+$("trends-toggle").addEventListener("click", () => {
+  const box = $("trends");
+  const opening = box.classList.contains("hidden");
+  box.classList.toggle("hidden", !opening);
+  $("trends-toggle").textContent = opening ? "Hide data trends" : "Show data trends";
+  if (opening) loadTrends();
+});
+
+async function loadTrends() {
+  const box = $("trends");
+  if (!state.trend) {
+    box.innerHTML = `<div class="empty">Loading…</div>`;
+    try {
+      state.trend = await api("/monitor/trend");
+    } catch (err) {
+      box.innerHTML = `<div class="err">Couldn't load the trends.</div>`;
+      return;
+    }
+  }
+  renderTrends();
+}
+
+function spark(values, color) {
+  if (values.length < 2) return `<svg viewBox="0 0 200 48"></svg>`;
+  const w = 200, h = 48, pad = 5;
+  let min = Math.min(...values), max = Math.max(...values);
+  if (min === max) { min -= 1; max += 1; }
+  const pts = values.map((v, i) => {
+    const x = pad + (i / (values.length - 1)) * (w - pad * 2);
+    const y = pad + (1 - (v - min) / (max - min)) * (h - pad * 2);
+    return [x, y];
+  });
+  const d = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+  const last = pts[pts.length - 1];
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+    <circle cx="${last[0]}" cy="${last[1]}" r="2.6" fill="${color}" />
+  </svg>`;
+}
+
+function renderTrends() {
+  const t = state.trend;
+  const box = $("trends");
+  if (!t || !t.length) {
+    box.innerHTML = `<div class="empty">No successful runs with metrics yet.</div>`;
+    return;
+  }
+
+  const latest = t[t.length - 1];
+  const prev = t.length > 1 ? t[t.length - 2] : null;
+
+  const cards = [
+    ["Rows exported", t.map((x) => x.rows), num.format(latest.rows)],
+    ["Countries", t.map((x) => x.countries), num.format(latest.countries)],
+    ["Run duration", t.map((x) => x.duration_seconds), fmtDuration(latest.duration_seconds)],
+  ].map(([label, vals, shown]) => `
+    <div class="trend-card">
+      <div class="trend-card__label">${esc(label)}</div>
+      <div class="trend-card__value">${esc(shown)}</div>
+      ${spark(vals, "var(--accent)")}
+    </div>`).join("");
+
+  const nulls = Object.entries(latest.null_pct_by_indicator || {}).map(([name, pct]) => {
+    const before = prev ? prev.null_pct_by_indicator?.[name] : null;
+    let delta = "";
+    let cls = "";
+    if (before !== null && before !== undefined && pct !== null) {
+      const d = pct - before;
+      delta = `${d > 0 ? "+" : ""}${d.toFixed(1)} pts`;
+      if (d >= NULL_SPIKE_POINTS) cls = "c-medium";
+    }
+    return `
+      <div class="null-row">
+        <span class="null-row__name">${esc(humanize(name))}</span>
+        <span class="null-row__val ${cls}">${pct === null || pct === undefined ? "—" : pct.toFixed(1) + "%"}</span>
+        <span class="null-row__delta ${cls}">${esc(delta)}</span>
+      </div>`;
+  }).join("");
+
+  box.innerHTML = `
+    <div class="trend-grid">${cards}</div>
+    <h2 class="section-title">Missing values by indicator${prev ? " (change vs. previous run)" : ""}</h2>
+    <div class="nulls">${nulls}</div>`;
+}
+
+// ---------- Boot ----------
+
+boot();
+  </script>
+</body>
+</html>

@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>World Bank Indicators</title>
+  <style>
+:root {
+  --bg: #0b0d10;
+  --panel: #12161c;
+  --panel-border: #1f2530;
+  --panel-border-soft: #1a1f28;
+  --text: #e7ebee;
+  --muted: #838d99;
+  --muted-dim: #596270;
+ 
+  --accent: #37c98f;
+  --good: #37c98f;
+  --medium: #e0a940;
+  --poor: #e2574f;
+ 
+  --radius: 10px;
+  --radius-sm: 7px;
+ 
+  --font-body: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+ 
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+ 
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+ 
+.stage {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 40px 20px 72px;
+}
+ 
+/* ---------- Header ---------- */
+ 
+.page-title { font-size: 22px; font-weight: 650; margin: 0 0 4px; }
+.page-sub { font-size: 13px; color: var(--muted); margin: 0 0 8px; line-height: 1.5; }
+ 
+.health-line {
+  font-size: 12px;
+  color: var(--muted-dim);
+  min-height: 18px;
+  margin-bottom: 26px;
+}
+ 
+.health-line .st-good { color: var(--good); }
+.health-line .st-medium { color: var(--medium); }
+.health-line .st-poor { color: var(--poor); }
+ 
+/* ---------- Startup (cold start) ---------- */
+ 
+.startup {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 36px 24px;
+  text-align: center;
+}
+ 
+.spinner {
+  width: 22px;
+  height: 22px;
+  margin: 0 auto 16px;
+  border: 2px solid var(--panel-border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+ 
+@keyframes spin { to { transform: rotate(360deg); } }
+ 
+.startup__title { font-size: 14px; font-weight: 600; margin: 0 0 6px; }
+.startup__msg { font-size: 12.5px; color: var(--muted); margin: 0; line-height: 1.55; }
+ 
+.btn {
+  margin-top: 16px;
+  background: var(--accent);
+  color: #06130d;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 18px;
+  cursor: pointer;
+}
+ 
+/* ---------- Controls ---------- */
+ 
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
+  margin-bottom: 22px;
+}
+ 
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field--wide { grid-column: 1 / -1; }
+ 
+.field label, .field .label {
+  font-size: 12px;
+  color: var(--muted-dim);
+}
+ 
+select, input[type="text"] {
+  background: #0d1015;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  padding: 10px 12px;
+  outline: none;
+  width: 100%;
+}
+ 
+select:focus, input[type="text"]:focus { border-color: var(--accent); }
+ 
+.year-row { display: flex; align-items: center; gap: 12px; }
+.year-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+.year-value { font-size: 14px; font-weight: 650; min-width: 42px; text-align: right; }
+ 
+.segmented { display: flex; gap: 6px; }
+ 
+.seg-btn {
+  flex: 1;
+  background: #0d1015;
+  border: 1px solid var(--panel-border);
+  color: var(--muted);
+  font-size: 12.5px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+ 
+.seg-btn.is-active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(55, 201, 143, 0.08);
+}
+ 
+/* ---------- Cards ---------- */
+ 
+.card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+}
+ 
+.section-title {
+  font-size: 15px;
+  font-weight: 650;
+  margin: 0 0 4px;
+}
+ 
+.section-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+ 
+.empty, .err {
+  padding: 28px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted-dim);
+}
+ 
+.err { color: var(--poor); }
+ 
+/* ---------- Ranking rows ---------- */
+ 
+.rrow {
+  padding: 11px 8px;
+  margin: 0 -8px;
+  border-bottom: 1px solid var(--panel-border-soft);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s ease;
+}
+ 
+.rrow:last-child { border-bottom: none; }
+.rrow:hover { background: rgba(255, 255, 255, 0.025); }
+.rrow.is-selected { background: rgba(55, 201, 143, 0.07); }
+ 
+.rrow__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+ 
+.rrow__name { font-size: 13px; font-weight: 600; min-width: 0; }
+.rrow__rank { color: var(--muted-dim); font-weight: 500; margin-right: 8px; font-variant-numeric: tabular-nums; }
+.rrow__value { font-size: 13px; font-weight: 650; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+ 
+.rrow__track { height: 6px; border-radius: 100px; background: var(--panel-border); overflow: hidden; }
+.rrow__fill { height: 100%; border-radius: 100px; background: var(--accent); }
+ 
+.rrow__cap { margin-top: 6px; font-size: 11.5px; color: var(--muted-dim); }
+ 
+.more-btn {
+  margin-top: 12px;
+  width: 100%;
+  background: none;
+  border: 1px dashed var(--panel-border);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 9px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+ 
+.more-btn:hover { color: var(--text); border-color: var(--muted-dim); }
+ 
+/* ---------- Country detail ---------- */
+ 
+.detail { margin-top: 22px; }
+ 
+.detail__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+ 
+.detail__name { font-size: 17px; font-weight: 650; margin: 0; }
+ 
+.close-btn {
+  background: none;
+  border: 1px solid var(--panel-border);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 5px 11px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+ 
+.close-btn:hover { color: var(--text); border-color: var(--muted); }
+ 
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+ 
+.chip {
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--panel-border);
+  border-radius: 100px;
+  padding: 2px 10px;
+}
+ 
+.spark-label { font-size: 12px; color: var(--muted-dim); margin: 0 0 6px; }
+.spark-svg { width: 100%; height: auto; display: block; }
+.spark-axis { font-size: 9.5px; fill: var(--muted-dim); font-family: var(--font-body); }
+.spark-val { font-size: 10.5px; fill: var(--text); font-weight: 650; font-family: var(--font-body); }
+ 
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--panel-border-soft);
+}
+ 
+.stat { min-width: 0; }
+.stat__label { font-size: 11.5px; color: var(--muted-dim); }
+.stat__value { font-size: 15px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.stat__year { font-size: 11px; color: var(--muted-dim); font-weight: 400; margin-left: 6px; }
+ 
+/* ---------- Pipeline history ---------- */
+ 
+.pipeline { margin-top: 28px; }
+ 
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--panel-border);
+  text-underline-offset: 3px;
+}
+ 
+.link-btn:hover { color: var(--text); }
+ 
+.runs { margin-top: 12px; display: flex; flex-direction: column; }
+ 
+.run {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--panel-border-soft);
+  font-size: 12.5px;
+}
+ 
+.run:last-child { border-bottom: none; }
+ 
+.run__dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  flex-shrink: 0;
+  position: relative; top: -1px;
+}
+ 
+.run__time { color: var(--text); flex-shrink: 0; }
+.run__extra { color: var(--muted-dim); font-size: 11.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ 
+.hidden { display: none !important; }
+ 
+@media (max-width: 560px) {
+  .controls { grid-template-columns: 1fr; }
+}
+ 
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <h1 class="page-title">World Bank Indicators</h1>
+    <p class="page-sub">Economic indicators by country and year, produced by a reproducible ELT pipeline and served as static snapshots.</p>
+    <div class="health-line" id="health-line"></div>
+ 
+    <!-- Cold start / loading state -->
+    <section class="startup" id="startup">
+      <div class="spinner" id="startup-spinner"></div>
+      <p class="startup__title" id="startup-title">Starting the demo server…</p>
+      <p class="startup__msg" id="startup-msg">The demo runs on a free server that sleeps when idle. This can take 30–60 seconds the first time.</p>
+      <button class="btn hidden" id="startup-retry" type="button">Try again</button>
+    </section>
+ 
+    <!-- App -->
+    <section id="app" class="hidden">
+      <div class="controls">
+        <div class="field field--wide">
+          <label for="indicator">Indicator</label>
+          <select id="indicator"></select>
+        </div>
+ 
+        <div class="field field--wide">
+          <span class="label">Year</span>
+          <div class="year-row">
+            <input type="range" id="year" aria-label="Year" />
+            <span class="year-value" id="year-value">—</span>
+          </div>
+        </div>
+ 
+        <div class="field">
+          <label for="region">Region</label>
+          <select id="region"></select>
+        </div>
+ 
+        <div class="field">
+          <span class="label">Show</span>
+          <div class="segmented">
+            <button type="button" class="seg-btn is-active" data-order="desc">Highest</button>
+            <button type="button" class="seg-btn" data-order="asc">Lowest</button>
+          </div>
+        </div>
+ 
+        <div class="field field--wide">
+          <label for="country-search">Find a country</label>
+          <input type="text" id="country-search" list="country-list" placeholder="Start typing a country name…" autocomplete="off" />
+          <datalist id="country-list"></datalist>
+        </div>
+      </div>
+ 
+      <div class="card">
+        <h2 class="section-title" id="rank-title">Ranking</h2>
+        <p class="section-sub" id="rank-sub"></p>
+        <div id="rank-body"></div>
+      </div>
+ 
+      <div class="detail hidden" id="detail"></div>
+ 
+      <div class="pipeline">
+        <button type="button" class="link-btn" id="runs-toggle">Show pipeline history</button>
+        <div class="runs hidden" id="runs"></div>
+      </div>
+    </section>
+  </main>
+ 
+  <script>
+// Point this to your API. On Render this is your Web Service URL.
+const API_BASE = "http://localhost:8005";
+ 
+const HEALTH_POLL_MS = 3000;
+const HEALTH_TIMEOUT_MS = 120000;   // give up after 2 minutes
+const SLOW_NOTICE_MS = 25000;       // switch to the "still starting" message
+const REQUEST_TIMEOUT_MS = 10000;
+ 
+const $ = (id) => document.getElementById(id);
+ 
+const state = {
+  meta: null,
+  indicator: null,
+  year: null,          // null = let the API pick the latest complete year
+  region: "",
+  order: "desc",
+  limit: 10,
+  selectedCode: null,
+  countryCache: {},
+  countryByName: {},
+  rankSeq: 0,
+};
+ 
+// ---------- Helpers ----------
+ 
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[ch]));
+}
+ 
+async function api(path, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { signal: controller.signal });
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+ 
+const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 });
+const thousands = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+ 
+function fmt(key, v) {
+  if (v === null || v === undefined || Number.isNaN(Number(v))) return "—";
+  const n = Number(v);
+  switch (key) {
+    case "gdp_current_usd": return `$${compact.format(n)}`;
+    case "gdp_per_capita_current_usd": return `$${thousands.format(n)}`;
+    case "population_total": return compact.format(n);
+    case "inflation_cpi_pct":
+    case "unemployment_pct": return `${n.toFixed(1)}%`;
+    case "life_expectancy_years": return `${n.toFixed(1)} yrs`;
+    default: return compact.format(n);
+  }
+}
+ 
+function indicatorLabel(key) {
+  const found = state.meta.indicators.find((i) => i.key === key);
+  return found ? found.label : key;
+}
+ 
+function statusClass(status) {
+  const s = String(status || "").toLowerCase();
+  if (/(success|ok|complete|pass)/.test(s)) return "good";
+  if (/(fail|error|crash)/.test(s)) return "poor";
+  return "medium";
+}
+ 
+function fmtDate(value) {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? String(value ?? "") : d.toLocaleString();
+}
+ 
+// ---------- Cold start: wait for the backend, don't redirect blindly ----------
+ 
+async function boot() {
+  $("startup").classList.remove("hidden");
+  $("app").classList.add("hidden");
+  $("startup-spinner").classList.remove("hidden");
+  $("startup-retry").classList.add("hidden");
+  $("startup-title").textContent = "Starting the demo server…";
+  $("startup-msg").textContent =
+    "The demo runs on a free server that sleeps when idle. This can take 30–60 seconds the first time.";
+ 
+  const started = Date.now();
+  let health = null;
+ 
+  while (Date.now() - started < HEALTH_TIMEOUT_MS) {
+    try {
+      health = await api("/health", 8000);
+      break;
+    } catch (err) {
+      // Not ready yet (sleeping, starting, or snapshot not loaded): keep waiting.
+    }
+    if (Date.now() - started > SLOW_NOTICE_MS) {
+      $("startup-title").textContent = "Still starting…";
+      $("startup-msg").textContent =
+        "Almost there. The server is waking up and loading the data. You can keep this tab open.";
+    }
+    await new Promise((r) => setTimeout(r, HEALTH_POLL_MS));
+  }
+ 
+  if (!health) {
+    $("startup-spinner").classList.add("hidden");
+    $("startup-title").textContent = "The demo server didn't respond";
+    $("startup-msg").textContent = "It may be down or still waking up. Give it a moment and try again.";
+    $("startup-retry").classList.remove("hidden");
+    return;
+  }
+ 
+  renderHealth(health);
+  try {
+    state.meta = await api("/meta");
+  } catch (err) {
+    $("startup-spinner").classList.add("hidden");
+    $("startup-title").textContent = "Couldn't load the data";
+    $("startup-msg").textContent = "The server is up but the request failed. Please try again.";
+    $("startup-retry").classList.remove("hidden");
+    return;
+  }
+ 
+  $("startup").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  initApp();
+}
+ 
+function renderHealth(h) {
+  const parts = [];
+  if (h.last_run_status) {
+    parts.push(`Last pipeline run: <span class="st-${statusClass(h.last_run_status)}">${esc(h.last_run_status)}</span>`);
+  }
+  if (h.last_run_at) parts.push(esc(fmtDate(h.last_run_at)));
+  if (h.rows_loaded != null) parts.push(`${thousands.format(h.rows_loaded)} rows`);
+  if (h.countries_loaded != null) parts.push(`${h.countries_loaded} countries`);
+  $("health-line").innerHTML = parts.join(" · ");
+}
+ 
+$("startup-retry").addEventListener("click", boot);
+ 
+// ---------- App init ----------
+ 
+function initApp() {
+  const m = state.meta;
+ 
+  $("indicator").innerHTML = m.indicators.map((i) => `<option value="${esc(i.key)}">${esc(i.label)}</option>`).join("");
+  state.indicator = m.indicators[0].key;
+ 
+  $("region").innerHTML =
+    `<option value="">All regions</option>` + m.regions.map((r) => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
+ 
+  const slider = $("year");
+  slider.min = m.year_min;
+  slider.max = m.year_max;
+  slider.value = m.year_max;
+ 
+  loadCountryList();
+  loadRanking();
+}
+ 
+async function loadCountryList() {
+  try {
+    const list = await api("/countries");
+    state.countryByName = {};
+    $("country-list").innerHTML = list.map((c) => {
+      state.countryByName[c.country_name.toLowerCase()] = c.country_code;
+      return `<option value="${esc(c.country_name)}"></option>`;
+    }).join("");
+  } catch (err) {
+    // Search is optional; rankings still work.
+  }
+}
+ 
+// ---------- Controls ----------
+ 
+$("indicator").addEventListener("change", (e) => {
+  state.indicator = e.target.value;
+  loadRanking();
+  if (state.selectedCode) renderDetail();
+});
+ 
+$("region").addEventListener("change", (e) => {
+  state.region = e.target.value;
+  loadRanking();
+});
+ 
+document.querySelectorAll(".seg-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    state.order = btn.dataset.order;
+    document.querySelectorAll(".seg-btn").forEach((b) => b.classList.toggle("is-active", b === btn));
+    loadRanking();
+  });
+});
+ 
+let yearTimer = null;
+$("year").addEventListener("input", (e) => {
+  state.year = Number(e.target.value);
+  $("year-value").textContent = state.year;
+  clearTimeout(yearTimer);
+  yearTimer = setTimeout(loadRanking, 250);
+});
+ 
+$("country-search").addEventListener("change", (e) => {
+  const code = state.countryByName[e.target.value.trim().toLowerCase()];
+  if (code) {
+    selectCountry(code);
+    e.target.value = "";
+  }
+});
+ 
+// ---------- Ranking ----------
+ 
+async function loadRanking() {
+  const seq = ++state.rankSeq;
+  $("rank-body").innerHTML = `<div class="empty">Loading…</div>`;
+ 
+  const params = new URLSearchParams({
+    indicator: state.indicator,
+    limit: String(state.limit),
+    order: state.order,
+  });
+  if (state.year !== null) params.set("year", String(state.year));
+  if (state.region) params.set("region", state.region);
+ 
+  try {
+    const data = await api(`/ranking?${params.toString()}`);
+    if (seq !== state.rankSeq) return; // a newer request is in flight
+    renderRanking(data);
+  } catch (err) {
+    if (seq !== state.rankSeq) return;
+    $("rank-body").innerHTML = `<div class="err">Couldn't load this ranking. Try again in a moment.</div>`;
+  }
+}
+ 
+function renderRanking(data) {
+  $("year").value = data.year;
+  $("year-value").textContent = data.year;
+ 
+  const dir = data.order === "asc" ? "Lowest" : "Highest";
+  $("rank-title").textContent = indicatorLabel(data.indicator);
+  $("rank-sub").textContent =
+    `${dir} countries in ${data.year}` + (state.region ? ` · ${state.region}` : "") + ". Select a country for its history.";
+ 
+  if (!data.items.length) {
+    $("rank-body").innerHTML = `<div class="empty">No data for this selection. Try another year or region.</div>`;
+    return;
+  }
+ 
+  const values = data.items.map((i) => Math.abs(Number(i.value)));
+  const max = Math.max(...values) || 1;
+ 
+  const rows = data.items.map((item, idx) => {
+    const pct = Math.max(2, (Math.abs(Number(item.value)) / max) * 100);
+    const selected = item.country_code === state.selectedCode ? " is-selected" : "";
+    return `
+      <div class="rrow${selected}" data-code="${esc(item.country_code)}">
+        <div class="rrow__top">
+          <span class="rrow__name"><span class="rrow__rank">${idx + 1}</span>${esc(item.country_name)}</span>
+          <span class="rrow__value">${fmt(data.indicator, item.value)}</span>
+        </div>
+        <div class="rrow__track"><div class="rrow__fill" style="width:${pct}%"></div></div>
+        <div class="rrow__cap">${esc(item.region_name)}</div>
+      </div>`;
+  }).join("");
+ 
+  const moreLabel = state.limit === 10 ? "Show top 25" : "Show fewer";
+  $("rank-body").innerHTML = rows + `<button type="button" class="more-btn" id="more-btn">${moreLabel}</button>`;
+ 
+  document.querySelectorAll(".rrow").forEach((row) => {
+    row.addEventListener("click", () => selectCountry(row.dataset.code));
+  });
+  $("more-btn").addEventListener("click", () => {
+    state.limit = state.limit === 10 ? 25 : 10;
+    loadRanking();
+  });
+}
+ 
+// ---------- Country detail ----------
+ 
+async function selectCountry(code) {
+  state.selectedCode = code;
+  document.querySelectorAll(".rrow").forEach((r) => r.classList.toggle("is-selected", r.dataset.code === code));
+ 
+  const box = $("detail");
+  box.classList.remove("hidden");
+  if (!state.countryCache[code]) {
+    box.innerHTML = `<div class="card"><div class="empty">Loading…</div></div>`;
+    box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    try {
+      state.countryCache[code] = await api(`/countries/${encodeURIComponent(code)}`);
+    } catch (err) {
+      box.innerHTML = `<div class="card"><div class="err">Couldn't load this country.</div></div>`;
+      return;
+    }
+  }
+  if (state.selectedCode !== code) return;
+  renderDetail();
+  box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+ 
+function sparkline(series, key) {
+  const pts = series.map((r) => ({ year: r.year, v: r[key] })).filter((p) => p.v !== null && p.v !== undefined);
+  if (pts.length < 2) return `<div class="empty">Not enough data for this indicator.</div>`;
+ 
+  const w = 680, h = 170, padL = 12, padR = 56, padT = 24, padB = 26;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const years = series.map((r) => r.year);
+  const yMin = Math.min(...years), yMax = Math.max(...years);
+  const vals = pts.map((p) => Number(p.v));
+  let vMin = Math.min(...vals), vMax = Math.max(...vals);
+  if (vMin === vMax) { vMin -= 1; vMax += 1; }
+ 
+  const x = (yr) => padL + ((yr - yMin) / Math.max(1, yMax - yMin)) * plotW;
+  const y = (v) => padT + plotH - ((Number(v) - vMin) / (vMax - vMin)) * plotH;
+ 
+  // Break the line wherever a year has no value.
+  let d = "";
+  let drawing = false;
+  series.forEach((r) => {
+    const v = r[key];
+    if (v === null || v === undefined) { drawing = false; return; }
+    d += `${drawing ? "L" : "M"}${x(r.year).toFixed(1)},${y(v).toFixed(1)} `;
+    drawing = true;
+  });
+ 
+  const last = pts[pts.length - 1];
+  return `
+    <svg class="spark-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Trend">
+      <line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="var(--panel-border)" />
+      <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" />
+      <circle cx="${x(last.year)}" cy="${y(last.v)}" r="3.8" fill="var(--accent)" />
+      <text x="${x(last.year) + 8}" y="${y(last.v) + 4}" class="spark-val">${esc(fmt(key, last.v))}</text>
+      <text x="${padL}" y="${h - 8}" class="spark-axis">${yMin}</text>
+      <text x="${padL + plotW}" y="${h - 8}" text-anchor="end" class="spark-axis">${yMax}</text>
+    </svg>`;
+}
+ 
+function renderDetail() {
+  const payload = state.countryCache[state.selectedCode];
+  if (!payload) return;
+  const { country, series } = payload;
+ 
+  const stats = state.meta.indicators.map((ind) => {
+    let latest = null;
+    for (let i = series.length - 1; i >= 0; i--) {
+      if (series[i][ind.key] !== null && series[i][ind.key] !== undefined) { latest = series[i]; break; }
+    }
+    return `
+      <div class="stat">
+        <div class="stat__label">${esc(ind.label)}</div>
+        <div class="stat__value">${latest ? esc(fmt(ind.key, latest[ind.key])) : "—"}${latest ? `<span class="stat__year">${latest.year}</span>` : ""}</div>
+      </div>`;
+  }).join("");
+ 
+  $("detail").innerHTML = `
+    <div class="card">
+      <div class="detail__head">
+        <h2 class="detail__name">${esc(country.country_name)}</h2>
+        <button type="button" class="close-btn" id="close-detail">Close</button>
+      </div>
+      <div class="chips">
+        <span class="chip">${esc(country.region_name)}</span>
+        <span class="chip">${esc(country.income_level)}</span>
+      </div>
+      <p class="spark-label">${esc(indicatorLabel(state.indicator))}, over time</p>
+      ${sparkline(series, state.indicator)}
+      <div class="stats">${stats}</div>
+    </div>`;
+ 
+  $("close-detail").addEventListener("click", () => {
+    state.selectedCode = null;
+    $("detail").classList.add("hidden");
+    document.querySelectorAll(".rrow").forEach((r) => r.classList.remove("is-selected"));
+  });
+}
+ 
+// ---------- Pipeline history (loaded only when asked) ----------
+ 
+let runsLoaded = false;
+ 
+$("runs-toggle").addEventListener("click", async () => {
+  const box = $("runs");
+  const opening = box.classList.contains("hidden");
+  box.classList.toggle("hidden", !opening);
+  $("runs-toggle").textContent = opening ? "Hide pipeline history" : "Show pipeline history";
+  if (!opening || runsLoaded) return;
+ 
+  box.innerHTML = `<div class="empty">Loading…</div>`;
+  try {
+    const runs = await api("/pipeline/runs?limit=20");
+    runsLoaded = true;
+    if (!runs.length) {
+      box.innerHTML = `<div class="empty">No pipeline runs recorded yet.</div>`;
+      return;
+    }
+    box.innerHTML = runs.map((run) => {
+      const cls = statusClass(run.status);
+      const extras = Object.entries(run)
+        .filter(([k, v]) => !["status", "run_started_at"].includes(k) && v !== null && typeof v !== "object")
+        .map(([k, v]) => `${esc(k.replace(/_/g, " "))} ${esc(String(v).slice(0, 60))}`)
+        .join(" · ");
+      return `
+        <div class="run">
+          <span class="run__dot" style="background:var(--${cls})"></span>
+          <span class="run__time">${esc(fmtDate(run.run_started_at))}</span>
+          <span class="run__extra">${esc(run.status ?? "")}${extras ? " · " + extras : ""}</span>
+        </div>`;
+    }).join("");
+  } catch (err) {
+    box.innerHTML = `<div class="err">Couldn't load the pipeline history.</div>`;
+  }
+});
+ 
+// ---------- Boot ----------
+ 
+boot();
+  </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: fct_indicators_wide
+    description: One row per country and year with the six World Bank indicators as columns.
+    columns:
+      - name: country_code
+        tests:
+          - not_null
+      - name: year
+        tests:
+          - not_null
+      - name: region_name
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - East Asia & Pacific
+                  - Europe & Central Asia
+                  - Latin America & Caribbean
+                  - Middle East, North Africa, Afghanistan & Pakistan
+                  - North America
+                  - South Asia
+                  - Sub-Saharan Africa
